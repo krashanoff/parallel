@@ -23,4 +23,4 @@ parallel -j 12 -t 500 cat {} ./*
 
 ## Stuff on the horizon
 * Pass stdin as `-` in place of files list.
-* Use `{}` wherever the current file's name should be substituted.
+* Rust-style formatting for file parameters. For example: `{:-1}` to get the last file component of the input path.
