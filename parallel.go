@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -27,6 +28,8 @@ parallel [flags] [command+flags] \; [list of files]
 
 Example:
 parallel -j 4 -t 6000 sed -i '$ a\New line' {} \; ./folder/*.md
+
+Use "parallel ... \; -" to read newline-delimited file paths from stdin.
 
 Flags:`
 
@@ -58,6 +61,14 @@ func main() {
 
 	program := os.Args[argStart:fileOffset]
 	files := os.Args[fileOffset+1:]
+	if len(files) == 1 && files[0] == "-" {
+		log.Println("Using stdin for input.")
+		if buf, err := ioutil.ReadAll(os.Stdin); err != nil {
+			log.Println("Failed to read stdin.")
+		} else {
+			files = strings.Split(string(buf), "\n")
+		}
+	}
 
 	if len(program) == 0 {
 		log.Fatalln("No program supplied.")
@@ -79,14 +90,16 @@ func main() {
 				defer cancel()
 
 				// Transform input pattern
-				for i, _ := range program {
-					program[i] = strings.ReplaceAll(program[i], "{}", f)
+				cmdArgs := make([]string, len(program))
+				copy(cmdArgs, program)
+				for i := range cmdArgs {
+					cmdArgs[i] = strings.ReplaceAll(cmdArgs[i], "{}", f)
 				}
 
 				// Setup command, redirect pipes
-				cmd := exec.CommandContext(ctx, program[0])
+				cmd := exec.CommandContext(ctx, cmdArgs[0])
 				if len(program) > 1 {
-					cmd = exec.CommandContext(ctx, program[0], program[1:]...)
+					cmd = exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 				}
 				if !*quiet {
 					cmd.Stdout = os.Stdout
@@ -94,7 +107,7 @@ func main() {
 				}
 
 				if err := cmd.Run(); err != nil {
-					log.Printf("Encountered error on thread ID %d: %v", id, err)
+					log.Printf("Error on thread ID %d: %v", id, err)
 				} else {
 					log.Printf("Thread ID %d completed operation on file %s", id, f)
 				}
@@ -105,6 +118,7 @@ func main() {
 
 	// Create work
 	for _, f := range files {
+		log.Printf("Sent %v", f)
 		work <- f
 	}
 	close(work)
