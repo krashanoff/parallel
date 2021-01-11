@@ -16,7 +16,7 @@ done
 # operation.
 parallel -j 4 cat {} \; ./test/*
 
-# cat all files with twelve thread in
+# cat all files with twelve threads in
 # operation, but cull jobs that take
 # over 50ms of execution time.
 parallel -j 12 -t 50 cat {} \; ./test/*
@@ -30,7 +30,12 @@ find test | grep '1.*' | parallel -j 6 -t 100 cat {} \; -
 parallel -j 6 pandoc -f markdown -t latex -o {}.pdf {} \; ./notes/*.md
 ```
 
-## Building and Running
+## Running
+
+You can get the binary built for your system from the
+[releases page](https://github.com/krashanoff/parallel/releases).
+
+## Building Your Own
 
 Requires:
 * GNU Make
