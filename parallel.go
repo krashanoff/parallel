@@ -21,7 +21,10 @@ import (
 // krashanoff
 //
 
-const ABOUT = `parallel - run a command on many threads
+const (
+	OK = iota
+	FAILED
+	ABOUT = `parallel - run a command on many threads
 
 Usage:
 parallel [flags] [command+flags] \; [list of files]
@@ -32,11 +35,18 @@ parallel -j 4 -t 6000 sed -i '$ a\New line' {} \; ./folder/*.md
 Use "parallel ... \; -" to read newline-delimited file paths from stdin.
 
 Flags:`
+)
+
+type JobStatus struct {
+	id uint64
+	status int
+	err error
+}
 
 func main() {
 	deadline := flag.Uint64("t", 0, "Set the maximum runtime in `milliseconds` for each execution. Defaults to no deadline (zero).")
 	threads := flag.Uint64("j", 1, "Set the number of `routines` to use.")
-	quiet := flag.Bool("q", false, "Suppress output from subprocesses.")
+	quiet := flag.Bool("q", false, "Suppress output from subprocesses' stdout.")
 	flag.Usage = func() {
 		fmt.Println(ABOUT)
 		flag.PrintDefaults()
@@ -61,7 +71,8 @@ func main() {
 
 	program := os.Args[argStart:fileOffset]
 	files := os.Args[fileOffset+1:]
-	if len(files) == 1 && files[0] == "-" {
+	numFiles := len(files)
+	if numFiles == 1 && files[0] == "-" {
 		log.Println("Using stdin for input.")
 		if buf, err := ioutil.ReadAll(os.Stdin); err != nil {
 			log.Println("Failed to read stdin.")
@@ -78,23 +89,17 @@ func main() {
 	log.Printf("Started execution at %v", startTime)
 
 	// Spawn workers
-	work, done := make(chan string), make(chan bool, len(files))
-	for id := uint64(0); id < *threads; id++ {
+	work, done := make(chan []string, numFiles), make(chan JobStatus, numFiles)
+	for i := uint64(0); i < *threads; i++ {
+		id := i
 		go func() {
-			for f := range work {
+			for cmdArgs := range work {
 				// Create timeout context
 				ctx, cancel := context.Background(), func() {}
 				if *deadline != 0 {
 					ctx, cancel = context.WithTimeout(context.Background(), time.Duration(*deadline)*time.Millisecond)
 				}
 				defer cancel()
-
-				// Transform input pattern
-				cmdArgs := make([]string, len(program))
-				copy(cmdArgs, program)
-				for i := range cmdArgs {
-					cmdArgs[i] = strings.ReplaceAll(cmdArgs[i], "{}", f)
-				}
 
 				// Setup command, redirect pipes
 				cmd := exec.CommandContext(ctx, cmdArgs[0])
@@ -106,12 +111,21 @@ func main() {
 					cmd.Stderr = os.Stderr
 				}
 
+				log.Printf("Thread ID %d assigned job %v", id, cmdArgs)
 				if err := cmd.Run(); err != nil {
 					log.Printf("Error on thread ID %d: %v", id, err)
+					done <- JobStatus{
+						id,
+						FAILED,
+						err,
+					}
 				} else {
-					log.Printf("Thread ID %d completed operation on file %s", id, f)
+					done <- JobStatus{
+						id,
+						OK,
+						nil,
+					}
 				}
-				done <- true
 			}
 		}()
 	}
@@ -119,15 +133,32 @@ func main() {
 	// Create work
 	for _, f := range files {
 		log.Printf("Sent %v", f)
-		work <- f
+		// Transform input pattern
+		cmdArgs := make([]string, len(program))
+		copy(cmdArgs, program)
+		for i := range cmdArgs {
+			cmdArgs[i] = strings.ReplaceAll(cmdArgs[i], "{}", f)
+		}
+		work <- cmdArgs
 	}
 	close(work)
 
 	// Wait for jobs to complete, exit.
+	successful, culled := 0, 0
 	for range files {
-		<-done
+		job := <- done
+		if job.status == OK {
+			successful++
+		} else {
+			culled++
+		}
 	}
+
 	endTime := time.Now()
-	log.Printf("Operation terminated at %v. Time taken: %v", endTime, endTime.Sub(startTime))
+	log.Printf("Operation terminated at %v.", endTime)
+	log.Printf("Total Time: %v", endTime.Sub(startTime))
+	log.Printf("Successful Jobs: %d", numFiles - culled)
+	log.Printf("Culled Jobs: %d", culled)
+
 	os.Exit(0)
 }
