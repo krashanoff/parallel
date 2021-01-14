@@ -48,6 +48,5 @@ make
 ```
 
 ## Stuff to add
-* Better summary at termination (culled jobs, etc.).
 * Reference file-name components within `{}` syntax. For example, `{:-1}`
   to get the last component.

@@ -21,10 +21,7 @@ import (
 // krashanoff
 //
 
-const (
-	OK = iota
-	FAILED
-	ABOUT = `parallel - run a command on many threads
+const ABOUT = `parallel - run a command on many threads
 
 Usage:
 parallel [flags] [command+flags] \; [list of files]
@@ -35,11 +32,9 @@ parallel -j 4 -t 6000 sed -i '$ a\New line' {} \; ./folder/*.md
 Use "parallel ... \; -" to read newline-delimited file paths from stdin.
 
 Flags:`
-)
 
 type JobStatus struct {
-	id uint64
-	status int
+	id  uint64
 	err error
 }
 
@@ -111,20 +106,10 @@ func main() {
 					cmd.Stderr = os.Stderr
 				}
 
-				log.Printf("Thread ID %d assigned job %v", id, cmdArgs)
-				if err := cmd.Run(); err != nil {
-					log.Printf("Error on thread ID %d: %v", id, err)
-					done <- JobStatus{
-						id,
-						FAILED,
-						err,
-					}
-				} else {
-					done <- JobStatus{
-						id,
-						OK,
-						nil,
-					}
+				log.Printf("Thread ID %d assigned job \"%v\"", id, strings.Join(cmdArgs, " "))
+				done <- JobStatus{
+					id,
+					cmd.Run(),
 				}
 			}
 		}()
@@ -146,18 +131,19 @@ func main() {
 	// Wait for jobs to complete, exit.
 	successful, culled := 0, 0
 	for range files {
-		job := <- done
-		if job.status == OK {
-			successful++
-		} else {
+		job := <-done
+		if job.err != nil {
+			log.Printf("ERROR: Thread %d reported error: %v", job.id, job.err)
 			culled++
+		} else {
+			successful++
 		}
 	}
 
 	endTime := time.Now()
 	log.Printf("Operation terminated at %v.", endTime)
 	log.Printf("Total Time: %v", endTime.Sub(startTime))
-	log.Printf("Successful Jobs: %d", numFiles - culled)
+	log.Printf("Successful Jobs: %d", numFiles-culled)
 	log.Printf("Culled Jobs: %d", culled)
 
 	os.Exit(0)
