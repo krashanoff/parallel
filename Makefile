@@ -15,11 +15,11 @@ all: host $(PLATFORMS)
 
 .PHONY: host
 host:
-	go build -o $(BIN_OUT)/$(BIN_NAME)
+	go build -o $(BIN_OUT)/$(BIN_NAME) cmd/parallel.go
 
 .PHONY: $(PLATFORMS)
 $(PLATFORMS):
-	GOOS=$(@D) GOARCH=$(@F) go build -o $(BIN_OUT)/$(BIN_NAME)-$(@D)-$(@F)
+	GOOS=$(@D) GOARCH=$(@F) go build -o $(BIN_OUT)/$(BIN_NAME)-$(@D)-$(@F) cmd/parallel.go
 
 .PHONY: clean
 clean:
