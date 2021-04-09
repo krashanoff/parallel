@@ -3,10 +3,9 @@ package pkg
 import (
 	"errors"
 	"regexp"
-	// "strings"
 )
 
-const patternFmt = `.*\{((\{.*\})|(.?:\-?[0-9]+:(\-?[0-9]+)?))\}`
+const patternFmt = `.*\{((\{.*\})|(.?:\-?[0-9]+:(\-?[0-9]+)?))?\}`
 var patternCheck *regexp.Regexp
 
 func init() {
@@ -23,7 +22,8 @@ func ValidPattern(pattern string) bool {
  * the provided syntax:
  *
  * - {} inserts the entire string.
- * - {{S}} inserts the string "{S}".
+ * - {{ inserts the string "{".
+ * - }} inserts the string "}}".
  * - {:n} references the nth character of the string.
  * - {:n:m} references the n through mth characters of the
  *   string.
@@ -35,20 +35,33 @@ func ValidPattern(pattern string) bool {
  *
  * Ill-formatted input pattern strings return an error.
  */
-func InsertFilename(pattern string, replacement string) (string, error) {
+func InsertFilename(pattern string, replacement string) (result string, err error) {
 	if !ValidPattern(pattern) {
-		return "", errors.New("input pattern is ill-formatted")
+		err = errors.New("input pattern is ill-formatted")
+		return
 	}
 
+	inPattern := false
+	literalInsert := false
+
 	for _, c := range pattern {
-		switch c {
-		case '{':
-		case '}':
-		case ':':
+		if literalInsert {
+			result += string(c)
+		} else {
+			switch c {
+			case '{':
+				if inPattern {
+					result += "{"
+					literalInsert = true
+				}
+				inPattern = true
+			case '}':
+			case ':':
+			}
 		}
 	}
 
-	return "", nil
+	return
 }
 
 // GeneratePatterns generates a list of patterned strings using
