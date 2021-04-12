@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"krashanoff.com/parallel/pkg/pattern"
 )
 
 //
@@ -64,7 +66,7 @@ func main() {
 		log.Fatalln("Incorrect thread count!")
 	}
 
-	program := os.Args[argStart:fileOffset]
+	program := strings.Join(os.Args[argStart:fileOffset], " ")
 	files := os.Args[fileOffset+1:]
 	numFiles := len(files)
 	if numFiles == 1 && files[0] == "-" {
@@ -115,16 +117,13 @@ func main() {
 		}()
 	}
 
-	// Create work
-	for _, f := range files {
-		log.Printf("Sent %v", f)
-		// Transform input pattern
-		cmdArgs := make([]string, len(program))
-		copy(cmdArgs, program)
-		for i := range cmdArgs {
-			cmdArgs[i] = strings.ReplaceAll(cmdArgs[i], "{}", f)
-		}
-		work <- cmdArgs
+	// Create work, transforming input pattern.
+	cmdArgs, err := pattern.GeneratePatterns(program, files)
+	if err != nil {
+		log.Fatalf("Failed to parse input string: %v", err)
+	}
+	for _, c := range cmdArgs {
+		work <- strings.Split(c, " ")
 	}
 	close(work)
 
