@@ -35,18 +35,11 @@ parallel -j 6 pandoc -f markdown -t latex -o {}.pdf {} \; ./notes/*.md
 You can get the binary built for your system from the
 [releases page](https://github.com/krashanoff/parallel/releases).
 
-## Building Your Own
-
-Requires:
-* GNU Make
-* [Go](https://golang.org/)
+## Building From Source
 
 ```sh
-git clone https://github.com/krashanoff/parallel.git
-make
-./bin/parallel --help
+go install krashanoff.com/parallel
 ```
 
 ## Stuff to add
-* Reference file-name components within `{}` syntax. For example, `{:-1}`
-  to get the last component.
+* Web-server for hosting and/or distributing jobs.
