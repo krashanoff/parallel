@@ -1,3 +1,6 @@
+# Makefile to aid in the release process.
+# Completely optional for building.
+
 BIN_OUT=bin
 BIN_NAME=parallel
 PLATFORMS=windows/386 \
@@ -15,11 +18,11 @@ all: host $(PLATFORMS)
 
 .PHONY: host
 host:
-	go build -o $(BIN_OUT)/$(BIN_NAME) cmd/parallel.go
+	go build -o $(BIN_OUT)/$(BIN_NAME) main.go
 
 .PHONY: $(PLATFORMS)
 $(PLATFORMS):
-	GOOS=$(@D) GOARCH=$(@F) go build -o $(BIN_OUT)/$(BIN_NAME)-$(@D)-$(@F) cmd/parallel.go
+	GOOS=$(@D) GOARCH=$(@F) go build -o $(BIN_OUT)/$(BIN_NAME)-$(@D)-$(@F) main.go
 
 .PHONY: clean
 clean:
