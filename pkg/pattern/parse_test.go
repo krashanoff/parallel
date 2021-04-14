@@ -8,6 +8,10 @@ import (
 )
 
 func TestParseBrackets(t *testing.T) {
+	t.Run("emptyString", func(t *testing.T) {
+		_, err := parseBrackets("", "string")
+		require.Error(t, err)
+	})
 	t.Run("entireString", func(t *testing.T) {
 		result, err := parseBrackets("{}", "string")
 		require.NoError(t, err)

@@ -21,6 +21,10 @@ func init() {
 }
 
 func parseBrackets(bracket, replacement string) (string, error) {
+	if len(bracket) < 2 {
+		return "", errors.New("bracket patterns must be wrapped in '{}'")
+	}
+
 	if bracket[0] != '{' || bracket[len(bracket)-1] != '}' {
 		return "", errors.New("input pattern does not start with '{' and end with '}'")
 	}
