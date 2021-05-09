@@ -2,7 +2,6 @@ package pattern
 
 import (
 	"errors"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -61,27 +60,27 @@ func parseBrackets(bracket, replacement string) (string, error) {
 		endIdx = startIdx + 1
 	}
 
-	log.Println(startIdx, endIdx)
-
+	if startIdx >= endIdx {
+		return "", errors.New("start index must be less than end index")
+	}
 	return strings.Join(replaceSplit[startIdx:endIdx], ""), nil
 }
 
-/* InsertFilename replaces instances of {}-type patterns with
- * the provided syntax:
- *
- * - {} inserts the entire string.
- * - {{S}} inserts the string "{S}".
- * - {:n} references the nth character of the string.
- * - {:n:m} references the n through mth characters of the
- *   string.
- * - {S:n} references the nth component of the filename using
- *   'S' as a delimiter pattern. Colons are disallowed.
- * - {S:n:m} references the n through mth components of the
- *   filename using 'S' as a delimiter pattern. Colons are
- *   disallowed.
- *
- * Ill-formatted input pattern strings return an error.
- */
+// InsertFilename replaces instances of {}-type patterns with
+// the provided syntax:
+//
+// - {} inserts the entire string.
+// - {{S}} inserts the string "{S}".
+// - {:n} references the nth character of the string.
+// - {:n:m} references the n through mth characters of the
+//   string.
+// - {S:n} references the nth component of the filename using
+//   'S' as a delimiter pattern. Colons are disallowed.
+// - {S:n:m} references the n through mth components of the
+//   filename using 'S' as a delimiter pattern. Colons are
+//   disallowed.
+//
+// Ill-formatted input pattern strings return an error.
 func InsertFilename(pattern, replacement string) (result string, err error) {
 	stack := 0
 	lastStart := -1
